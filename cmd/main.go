@@ -2,7 +2,7 @@ package main
 
 import (
 	"loan-tracker/api/controllers"
-	// "loan-tracker/api/middleware"
+	"loan-tracker/api/middleware"
 	"loan-tracker/api/route"
 	"loan-tracker/config"
 	"loan-tracker/internal"
@@ -10,6 +10,7 @@ import (
 	"loan-tracker/repositories"
 	"loan-tracker/usecases"
 	"log"
+	"os"
 
 
 	// "github.com/gin-gonic/gin"
@@ -28,21 +29,26 @@ func main() {
 
 	// db := middleware.NewDatabaseConnection()
 	userCollection := client.Database("Loan").Collection("Users")
-	// tokenCollection := client.Database("Loan").Collection("Tokens")
+	tokenCollection := client.Database("Loan").Collection("Tokens")
+	otpCollection := client.Database("Loan").Collection("OTPs")
 
 	userMockCollection := repositories.NewMongoCollection(userCollection)
-	// tokenMockCollection := repositories.NewMongoCollection(tokenCollection)
+	tokenMockCollection := repositories.NewMongoCollection(tokenCollection)
+	otpMockCollection := repositories.NewMongoCollection(otpCollection)
 
 	userRepo := repositories.NewUserRepository(userMockCollection)
-	// tokenRepo := repositories.NewTokenRepository(tokenMockCollection)
+	tokenRepo := repositories.NewTokenRepository(tokenMockCollection)
+	otpRepo := repositories.NewOtpRepository(otpMockCollection)
 
-	// jwtService := middleware.NewJWTService(os.Getenv("JWT_SECRET"), "Kal", os.Getenv("JWT_REFRESH_SECRET"))
+	jwtService := middleware.NewJWTService(os.Getenv("JWT_SECRET"), "Kal", os.Getenv("JWT_REFRESH_SECRET"))
 
 	// Usecase setup
-	// userUsecase := usecases.NewUserUsecase(userRepo, tokenRepo, jwtService)
+	userUsecase := usecases.NewUserUsecase(userRepo, tokenRepo, jwtService)
 	registerUsecase := usecases.NewRegisterUsecase(userRepo)
 	verifyEmailUsecase := usecases.NewVerifyEmailUsecase(userRepo)
 	// resetPasswordUsecase := usecases.NewResetPasswordUsecase(userRepo)
+	otpUsecase := usecases.NewOTPUsecase(otpRepo,userRepo)
+	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, jwtService)
 
 
 	// Email setup
@@ -53,12 +59,17 @@ func main() {
 		Password: "jcwf vfzi njtd rayo",
 	}
 
+	userController := controllers.NewUserController(userUsecase)
 	registerCtrl := controllers.NewRegisterController(registerUsecase, mailConfig)
 	verifyEmailCtrl := controllers.NewVerifyEmailController(verifyEmailUsecase)
 	// resetPasswordCtrl := controllers.NewResetPasswordController(resetPasswordUsecase, mailConfig)
+	// otpController := controllers.NewOTPController(otpUsecase)
+	tokenController := controllers.NewRefreshTokenController(userUsecase,tokenUsecase,jwtService)
+	forgotPController := controllers.NewForgotPasswordController(userUsecase, otpUsecase)
+	logoutController := controllers.NewLogoutController(tokenUsecase)
 	
 	
-	router := route.SetupRouter(registerCtrl, verifyEmailCtrl, nil)
+	router := route.SetupRouter(userController,registerCtrl, verifyEmailCtrl,tokenController,forgotPController,logoutController, nil,jwtService)
 
 	// Start server
 	router.Run(":8080")

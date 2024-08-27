@@ -38,8 +38,10 @@ func (u *RegisterUsecase) Register(input domain.RegisterInput) (string, error) {
 
 	// Create user
 	user := &domain.User{
+		Name: 			input.Name,
 		Email:             input.Email,
 		Password:          hashedPassword,
+		Role:              "user",
 		VerificationToken: verificationToken,
 		IsVerified:        false,
 	}

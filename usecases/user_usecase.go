@@ -59,6 +59,10 @@ func (u *UserUsecase) Login(authUser *domain.AuthUser) (string, string, error) {
 
 	fmt.Println("user: ", user)
 
+	if !user.IsVerified {
+		return "", "", errors.New("user is not verified")
+	}
+
 	if err := middleware.CheckPasswordHash(user.Password, authUser.Password); err != nil {
 		return "", "", errors.New("invalid username or password2")
 	}
